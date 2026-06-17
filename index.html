@@ -139,7 +139,7 @@ body::after{content:'';position:fixed;inset:0;z-index:200;pointer-events:none;op
 /* clients */
 .clients{margin-top:64px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .client{display:flex;align-items:center;gap:15px;padding:15px;background:var(--surface);
-  border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);
+  border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);cursor:pointer;
   transition:border-color .25s,box-shadow .25s,transform .25s,background .25s}
 .client:hover{transform:translateY(-4px);border-color:rgba(255,34,64,.55);background:var(--surface2);
   box-shadow:0 12px 36px rgba(255,34,64,.18)}
@@ -346,15 +346,16 @@ const CONFIG = {
   ],
 
   // --- КЛІЄНТИ (8 штук) ---
+  // link: посилання на ютуб-канал (клік по картці відкриває канал)
   clients: [
-    { name: "Nizarisaqt",  subs: "2.36M", avatar: "client1.jpg" },
-    { name: "slurpy",      subs: "370K",  avatar: "client2.jpg" },
-    { name: "Bummkinn",    subs: "1.27M", avatar: "client3.jpg" },
-    { name: "breezy",      subs: "204K",  avatar: "client4.jpg" },
-    { name: "SubToIced",   subs: "24K",   avatar: "client5.jpg" },
-    { name: "KeylyahLive", subs: "70K",   avatar: "client6.jpg" },
-    { name: "7cyph",       subs: "30K",   avatar: "client7.jpg" },
-    { name: "MrSnowo",     subs: "1.3K",  avatar: "client8.png" },
+    { name: "Nizarisaqt",  subs: "2.36M", avatar: "client1.jpg", link: "https://www.youtube.com/@Nizarisacutie" },
+    { name: "slurpy",      subs: "370K",  avatar: "client2.jpg", link: "https://www.youtube.com/@slurpy" },
+    { name: "Bummkinn",    subs: "1.27M", avatar: "client3.jpg", link: "https://www.youtube.com/@Bummkinn" },
+    { name: "breezy",      subs: "204K",  avatar: "client4.jpg", link: "https://www.youtube.com/@Breezy-Blox" },
+    { name: "SubToIced",   subs: "24K",   avatar: "client5.jpg", link: "https://www.youtube.com/@SubToIced" },
+    { name: "KeylyahLive", subs: "70K",   avatar: "client6.jpg", link: "https://www.youtube.com/@KeylyahLive" },
+    { name: "7cyph",       subs: "30K",   avatar: "client7.jpg", link: "https://www.youtube.com/@7cyph" },
+    { name: "MrSnowo",     subs: "1.3K",  avatar: "client8.png", link: "https://www.youtube.com/@MrSnowo1" },
   ],
 
   // --- ВІДЕО (8 штук) ---
@@ -416,12 +417,16 @@ const statsIO = new IntersectionObserver(es=>es.forEach(e=>{
 }),{threshold:.4});
 statsIO.observe($('statsRow'));
 
-// clients (зі стаггер-затримкою появи)
-$('clientsGrid').innerHTML = CONFIG.clients.map((c,i)=>`
-  <div class="client reveal" style="--d:${i*0.06}s">
+// clients (зі стаггер-затримкою появи) — клік відкриває канал
+$('clientsGrid').innerHTML = CONFIG.clients.map((c,i)=>{
+  const tag = c.link ? 'a' : 'div';
+  const attrs = c.link ? `href="${c.link}" target="_blank" rel="noopener"` : '';
+  return `
+  <${tag} class="client reveal" style="--d:${i*0.06}s" ${attrs}>
     <img src="${c.avatar}" alt="${c.name}" loading="lazy">
     <div><div class="name">${c.name}</div><div class="subs">${c.subs}</div></div>
-  </div>`).join('');
+  </${tag}>`;
+}).join('');
 
 // videos — клік відкриває попап-плеєр
 $('workGrid').innerHTML = CONFIG.videos.map((v,idx)=>{
