@@ -182,12 +182,14 @@ body::after{content:'';position:fixed;inset:0;z-index:200;pointer-events:none;op
   padding:24px;background:rgba(5,4,6,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   opacity:0;pointer-events:none;transition:opacity .3s}
 .modal.open{opacity:1;pointer-events:auto}
-.modal-inner{position:relative;width:min(1000px,100%);aspect-ratio:16/9;
+.modal-inner{position:relative;width:min(1000px,100%);
   border-radius:var(--radius);overflow:hidden;border:1px solid rgba(255,34,64,.4);
   box-shadow:0 30px 90px rgba(0,0,0,.7), 0 0 60px rgba(255,34,64,.2);
   transform:scale(.94);transition:transform .3s}
 .modal.open .modal-inner{transform:scale(1)}
-.modal-inner iframe{width:100%;height:100%;border:0;display:block}
+/* 16:9 через padding-hack — працює у всіх браузерах */
+.modal-video{position:relative;width:100%;height:0;padding-bottom:56.25%}
+.modal-video iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 .modal-close{position:absolute;top:-14px;right:-14px;z-index:2;width:44px;height:44px;border-radius:50%;
   border:1px solid rgba(255,34,64,.6);background:var(--surface);color:#fff;font-size:22px;line-height:1;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
@@ -443,9 +445,9 @@ $('workGrid').innerHTML = CONFIG.videos.map((v,idx)=>{
   const modal = $('videoModal'), frame = $('modalFrame'), closeBtn = $('modalClose');
   const open = id => {
     if(!id) return;
-    frame.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0"
+    frame.innerHTML = `<div class="modal-video"><iframe src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen></iframe>`;
+      allowfullscreen></iframe></div>`;
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
   };
