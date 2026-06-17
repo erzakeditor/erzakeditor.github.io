@@ -155,7 +155,7 @@ body::after{content:'';position:fixed;inset:0;z-index:200;pointer-events:none;op
 .work-grid{margin-top:64px;display:grid;grid-template-columns:repeat(2,1fr);gap:26px}
 @media(max-width:640px){.work-grid{grid-template-columns:1fr}}
 .card{position:relative;background:var(--surface);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);
-  overflow:hidden;transition:transform .28s,border-color .28s,box-shadow .28s;display:block}
+  overflow:hidden;transition:transform .28s,border-color .28s,box-shadow .28s;display:block;cursor:pointer}
 .card:hover{transform:translateY(-7px);border-color:rgba(255,34,64,.6);box-shadow:0 18px 50px rgba(255,34,64,.22)}
 .thumb{position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--surface2)}
 .thumb img{width:100%;height:100%;object-fit:cover;transition:transform .45s cubic-bezier(.2,.7,.2,1)}
@@ -176,6 +176,25 @@ body::after{content:'';position:fixed;inset:0;z-index:200;pointer-events:none;op
 .card-num{font-family:'Anton',sans-serif;font-size:30px;color:rgba(255,255,255,.12);flex:none;
   transition:color .25s}
 .card:hover .card-num{color:rgba(255,34,64,.55)}
+
+/* ---------- VIDEO MODAL (попап-плеєр) ---------- */
+.modal{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:rgba(5,4,6,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  opacity:0;pointer-events:none;transition:opacity .3s}
+.modal.open{opacity:1;pointer-events:auto}
+.modal-inner{position:relative;width:min(1000px,100%);aspect-ratio:16/9;
+  border-radius:var(--radius);overflow:hidden;border:1px solid rgba(255,34,64,.4);
+  box-shadow:0 30px 90px rgba(0,0,0,.7), 0 0 60px rgba(255,34,64,.2);
+  transform:scale(.94);transition:transform .3s}
+.modal.open .modal-inner{transform:scale(1)}
+.modal-inner iframe{width:100%;height:100%;border:0;display:block}
+.modal-close{position:absolute;top:-14px;right:-14px;z-index:2;width:44px;height:44px;border-radius:50%;
+  border:1px solid rgba(255,34,64,.6);background:var(--surface);color:#fff;font-size:22px;line-height:1;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  box-shadow:0 0 22px rgba(255,34,64,.4);transition:transform .2s,box-shadow .2s}
+.modal-close:hover{transform:rotate(90deg);box-shadow:0 0 30px rgba(255,34,64,.7)}
+@media(pointer:coarse){.modal-close{cursor:pointer}}
+@media(max-width:560px){.modal-close{top:8px;right:8px}}
 
 /* CTA */
 .cta{text-align:center;padding:180px 20px 150px;position:relative;overflow:hidden}
@@ -228,6 +247,7 @@ body::after{content:'';position:fixed;inset:0;z-index:200;pointer-events:none;op
      (якщо пусто, береться avatar).
   3) КЛІЄНТИ: 8 штук — avatar, name, subs.
   4) ВІДЕО: 8 штук — youtubeId (те, що після watch?v=). Превʼю саме з ютуба.
+     Клік по картці = відео грає прямо на сайті у вікні.
   5) Кнопки CONTACTS і DM ME ведуть на contactLink.
 ====================================================================== -->
 
@@ -286,6 +306,14 @@ body::after{content:'';position:fixed;inset:0;z-index:200;pointer-events:none;op
 
 <button class="top-btn" id="topBtn" aria-label="Back to top">↑</button>
 
+<!-- video modal -->
+<div class="modal" id="videoModal">
+  <div class="modal-inner">
+    <button class="modal-close" id="modalClose" aria-label="Close">×</button>
+    <div id="modalFrame"></div>
+  </div>
+</div>
+
 <script>
 /* ============================ CONFIG ============================
    ↓↓↓ РЕДАГУЙ ТІЛЬКИ ЦЕЙ БЛОК ↓↓↓                                */
@@ -317,7 +345,7 @@ const CONFIG = {
 
   // --- КЛІЄНТИ (8 штук) ---
   clients: [
- { name: "Nizarisaqt",  subs: "2.36M", avatar: "client1.jpg" },
+    { name: "Nizarisaqt",  subs: "2.36M", avatar: "client1.jpg" },
     { name: "slurpy",      subs: "370K",  avatar: "client2.jpg" },
     { name: "Bummkinn",    subs: "1.27M", avatar: "client3.jpg" },
     { name: "breezy",      subs: "204K",  avatar: "client4.jpg" },
@@ -329,7 +357,6 @@ const CONFIG = {
 
   // --- ВІДЕО (8 штук) ---
   // youtubeId: те що після watch?v=. Своя превʼюшка: додай thumb: "лінк".
-  // Не ютуб: додай link: "лінк" і thumb: "картинка".
   videos: [
     { youtubeId: "hd_y5xW-umk", title: "1v1 Me & I'll Guess Your Rank AGAIN in RIVALS", client: "7cyph" },
     { youtubeId: "rd-1LGgVK10", title: "DESTROYING YOUTUBERS in a $100,000 Tournament", client: "Icedoutfit" },
@@ -394,23 +421,46 @@ $('clientsGrid').innerHTML = CONFIG.clients.map((c,i)=>`
     <div><div class="name">${c.name}</div><div class="subs">${c.subs}</div></div>
   </div>`).join('');
 
-// videos
+// videos — клік відкриває попап-плеєр
 $('workGrid').innerHTML = CONFIG.videos.map((v,idx)=>{
-  const yt = v.youtubeId && !v.youtubeId.startsWith('ВСТАВ') ? v.youtubeId : null;
-  const link = v.link || (yt ? `https://www.youtube.com/watch?v=${yt}` : '#');
+  const yt = v.youtubeId && !v.youtubeId.startsWith('ВСТАВ') ? v.youtubeId : '';
   const thumb = v.thumb || (yt ? `https://img.youtube.com/vi/${yt}/maxresdefault.jpg`
     : 'https://placehold.co/640x360/1d171c/ff2240?text=VIDEO');
   return `
-  <a class="card reveal" style="--d:${(idx%2)*0.08}s" href="${link}" target="_blank" rel="noopener">
+  <div class="card reveal" style="--d:${(idx%2)*0.08}s" data-yt="${yt}">
     <div class="thumb"><img src="${thumb}" alt="${v.title}" loading="lazy"
-      onerror="this.src='https://img.youtube.com/vi/${yt||''}/hqdefault.jpg'"><div class="play"></div></div>
+      onerror="this.src='https://img.youtube.com/vi/${yt}/hqdefault.jpg'"><div class="play"></div></div>
     <div class="card-body">
       <div><div class="card-title">${v.title}</div>
       <div class="card-client">${v.client}</div></div>
       <div class="card-num">${String(idx+1).padStart(2,'0')}</div>
     </div>
-  </a>`;
+  </div>`;
 }).join('');
+
+// модалка-плеєр
+(function(){
+  const modal = $('videoModal'), frame = $('modalFrame'), closeBtn = $('modalClose');
+  const open = id => {
+    if(!id) return;
+    frame.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen></iframe>`;
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+  const close = () => {
+    modal.classList.remove('open');
+    frame.innerHTML = '';            // зупиняє відео
+    document.body.style.overflow = '';
+  };
+  document.querySelectorAll('.card[data-yt]').forEach(card=>{
+    card.addEventListener('click', ()=>open(card.dataset.yt));
+  });
+  closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', e=>{ if(e.target === modal) close(); });
+  document.addEventListener('keydown', e=>{ if(e.key === 'Escape') close(); });
+})();
 
 // custom cursor
 (function(){
@@ -422,7 +472,7 @@ $('workGrid').innerHTML = CONFIG.videos.map((v,idx)=>{
   (function loop(){ rx+=(mx-rx)*.16; ry+=(my-ry)*.16;
     ring.style.left=rx+'px'; ring.style.top=ry+'px'; requestAnimationFrame(loop); })();
   document.addEventListener('mouseover',e=>{
-    ring.classList.toggle('hov', !!e.target.closest('a,button'));
+    ring.classList.toggle('hov', !!e.target.closest('a,button,.card'));
   });
 })();
 
